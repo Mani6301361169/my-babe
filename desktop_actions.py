@@ -18,6 +18,7 @@ from typing import Optional
 import psutil
 import pyautogui
 import pyperclip
+import requests
 
 
 LOGGER = logging.getLogger("jarvis")
@@ -32,6 +33,7 @@ class DesktopActions:
         self.documents = self._known_folder("Documents")
         self.downloads = self._known_folder("Downloads")
         self._reminders: list[threading.Timer] = []
+        self.last_search: tuple[str, str] | None = None
 
     def _known_folder(self, name: str) -> Path:
         return self.home / name
@@ -61,7 +63,39 @@ class DesktopActions:
             url = f"https://www.youtube.com/results?search_query={encoded}"
         else:
             url = f"https://www.google.com/search?q={encoded}"
-        return self.open_url(url, f"Searching {provider.title()} for {phrase}.")
+        result = self.open_url(url, f"Searching {provider.title()} for {phrase}.")
+        if result[0]:
+            self.last_search = (provider, phrase)
+        return result
+
+    def open_first_result(self) -> tuple[bool, str]:
+        if not self.last_search:
+            return self._result(False, "There is no previous search to open a result from.")
+        provider, phrase = self.last_search
+        if provider != "youtube":
+            return self._result(False, "I can open the first result only for a YouTube search.")
+        try:
+            encoded = __import__("urllib.parse", fromlist=["quote"]).quote(phrase)
+            response = requests.get(
+                f"https://www.youtube.com/results?search_query={encoded}",
+                timeout=10,
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            response.raise_for_status()
+            matches = re.findall(r'"videoId":"([\w-]{6,})"', response.text)
+            video_id = next((item for index, item in enumerate(matches) if item not in matches[:index]), None)
+            if not video_id:
+                return self._result(False, "I couldn't identify the first YouTube result.")
+            result = self.open_url(
+                f"https://www.youtube.com/watch?v={video_id}",
+                "Opening the first YouTube result.",
+            )
+            if result[0]:
+                time.sleep(1)
+            return result
+        except (requests.RequestException, ValueError) as error:
+            LOGGER.error("[ERROR] First-result lookup failed: %s", error)
+            return self._result(False, "I couldn't open the first YouTube result.")
 
     def _application_specs(self) -> dict[str, tuple[str, ...]]:
         return {

@@ -36,6 +36,7 @@ class Jarvis:
     def __init__(self) -> None:
         self.platform = platform
         self.desktop = DesktopActions()
+        self._last_action_success = True
 
     def wishMe(self) -> None:
         hour = datetime.datetime.now().hour
@@ -54,6 +55,7 @@ class Jarvis:
 
     def _respond(self, result):
         success, message = result
+        self._last_action_success = success
         speak(message)
         return success
 
@@ -71,7 +73,11 @@ class Jarvis:
 
     def _plan(self, query):
         """Split only unambiguous multi-step commands into executable steps."""
-        parts = re.split(r'\s*(?:;|\bthen\b|\band then\b)\s*', query, flags=re.IGNORECASE)
+        parts = re.split(
+            r'\s*(?:;|\bthen\b|\band then\b|,(?=\s*(?:open|launch|start|create|make|search|take|type|press|close|find|read|copy|move|rename|go|navigate|play|pause|increase|decrease|check|what|tell)\b))\s*',
+            query,
+            flags=re.IGNORECASE,
+        )
         if len(parts) == 1:
             parts = re.split(
                 r'\s+and\s+(?=(?:open|launch|start|create|make|search|take|type|press|close|find|read|copy|move|rename|go|navigate|play|pause|increase|decrease|check|what|tell)\b)',
@@ -80,16 +86,34 @@ class Jarvis:
             )
         return [part.strip() for part in parts if part.strip()]
 
-    def execute_query(self, query):
+    def _retry_allowed(self, step):
+        return not any(
+            word in step.lower()
+            for word in ('delete', 'shutdown', 'restart', 'move ', 'install', 'uninstall')
+        )
+
+    def execute_query(self, query, announce_complete=True):
         original_query = (query or '').strip()
         query = original_query.lower()
         if not query:
             return True
+        self._last_action_success = True
         steps = self._plan(original_query)
         if len(steps) > 1:
             LOGGER.info('[INTENT] PLAN: %s', steps)
-            outcomes = [self.execute_query(step) for step in steps]
-            return all(outcome is not False for outcome in outcomes)
+            for index, step in enumerate(steps, start=1):
+                LOGGER.info('[INTENT] STEP %d/%d: %s', index, len(steps), step)
+                outcome = self.execute_query(step, announce_complete=False)
+                if outcome is False and self._retry_allowed(step):
+                    LOGGER.info('[INTENT] RETRY STEP %d/%d: %s', index, len(steps), step)
+                    speak(f'Retrying step {index}.')
+                    outcome = self.execute_query(step, announce_complete=False)
+                if outcome is False:
+                    speak(f'I could not complete step {index}: {step}. The task stopped here.')
+                    return False
+            if announce_complete:
+                speak('Task completed.')
+            return True
         LOGGER.info('[COMMAND] %s', query)
         try:
             website_aliases = {
@@ -104,6 +128,8 @@ class Jarvis:
             if any(alias in query for alias in ('search youtube', 'youtube search')):
                 search = re.sub(r'.*?search youtube(?: for)?\s*', '', query).strip()
                 self._respond(self.desktop.search('youtube', search))
+            elif query in {'open the first result', 'open first result', 'open the first youtube result'}:
+                self._respond(self.desktop.open_first_result())
             elif any(text in query for text in ('search google', 'search the web', 'search for ')):
                 search = re.sub(r'^(?:please\s+)?(?:search google|search the web|search for)(?: for)?\s*', '', query).strip()
                 self._respond(self.desktop.search('google', search))
@@ -114,7 +140,7 @@ class Jarvis:
             elif re.search(r'^(?:open|navigate to|go to)\s+https?://', query):
                 url = re.sub(r'^(?:open|navigate to|go to)\s+', '', original_query, flags=re.IGNORECASE).strip()
                 self._respond(self.desktop.open_url(url, f'Opening {url}.'))
-            elif any(phrase in query for phrase in ('open ', 'launch ', 'start ', 'show ')):
+            elif re.match(r'^(?:please\s+)?(?:open|launch|start|show)\b', query):
                 app_aliases = {
                     'visual studio code': 'vs code', 'code editor': 'vs code',
                     'vs code': 'vs code', 'chrome': 'chrome', 'edge': 'edge',
@@ -264,8 +290,9 @@ class Jarvis:
                 LOGGER.info('[INTENT] UNKNOWN')
         except Exception as error:
             LOGGER.exception('[ERROR] Command failed: %s', error)
+            self._last_action_success = False
             speak('I could not complete that command, but I am still listening.')
-        return True
+        return self._last_action_success
 
 
 def wakeUpJARVIS():
