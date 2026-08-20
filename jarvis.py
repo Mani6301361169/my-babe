@@ -31,151 +31,6 @@ class Jarvis:
         self.platform = platform
 
     def wishMe(self) -> None:
-        hour = int(datetime.datetime.now().hour)
-        if hour >= 0 and hour < 12:
-            def _open_url(self, url, message):
-                try:
-                    if webbrowser.open_new_tab(url):
-                        speak(message)
-                    else:
-                        speak('I could not open the browser.')
-                except webbrowser.Error as error:
-                    print(f'Browser error: {error}')
-                    speak('I could not open the browser.')
-
-            def _launch_application(self, name, command):
-                try:
-                    executable = shutil.which(command)
-                    if executable:
-                        subprocess.Popen([executable])
-                        speak(f'Opening {name}')
-                        return
-                    if self.platform == 'win32':
-                        subprocess.Popen([command], shell=True)
-                        speak(f'Opening {name}')
-                        return
-                except OSError as error:
-                    print(f'Application error: {error}')
-                speak(f'I could not open {name}.')
-
-            def execute_query(self, query):
-                query = (query or '').strip().lower()
-                if not query:
-                    return
-
-                try:
-                    if 'jarvis are you there' in query or 'hey jarvis' in query:
-                        speak('Yes, how can I help?')
-                    elif 'open youtube' in query:
-                        self._open_url('https://www.youtube.com', 'Opening YouTube')
-                    elif 'open google' in query:
-                        self._open_url('https://www.google.com', 'Opening Google')
-                    elif 'open gmail' in query:
-                        self._open_url('https://mail.google.com', 'Opening Gmail')
-                    elif 'open github' in query:
-                        self._open_url('https://github.com', 'Opening GitHub')
-                    elif 'open amazon' in query:
-                        self._open_url('https://amazon.com', 'Opening Amazon')
-                    elif 'open stackoverflow' in query:
-                        self._open_url('https://stackoverflow.com', 'Opening Stack Overflow')
-                    elif 'search youtube' in query:
-                        search = re.sub(r'^search youtube(?: for)?', '', query).strip()
-                        if not search:
-                            speak('What should I search for on YouTube?')
-                            search = takeCommand()
-                        if search:
-                            url = 'https://www.youtube.com/results?search_query=' + urllib.parse.quote(search)
-                            self._open_url(url, f'Searching YouTube for {search}')
-                    elif 'search google' in query or query.startswith('search for '):
-                        search = re.sub(r'^(search google|search for)(?: for)?', '', query).strip()
-                        if search:
-                            url = 'https://www.google.com/search?q=' + urllib.parse.quote(search)
-                            self._open_url(url, f'Searching Google for {search}')
-                        else:
-                            speak('What should I search for?')
-                    elif 'open chrome' in query:
-                        self._launch_application('Chrome', 'chrome.exe')
-                    elif 'open notepad' in query:
-                        self._launch_application('Notepad', 'notepad.exe')
-                    elif 'open calculator' in query or 'open calc' in query:
-                        self._launch_application('Calculator', 'calc.exe')
-                    elif 'open vs code' in query or 'open visual studio code' in query or 'open code' in query:
-                        self._launch_application('VS Code', 'code')
-                    elif 'the time' in query or 'what time' in query:
-                        speak('The time is ' + datetime.datetime.now().strftime('%I:%M %p'))
-                    elif "today's date" in query or 'todays date' in query or 'what is the date' in query:
-                        speak('Today is ' + datetime.datetime.now().strftime('%A, %B %d, %Y'))
-                    elif 'shutdown' in query or 'restart' in query:
-                        action = 'restart' if 'restart' in query else 'shut down'
-                        speak(f'Are you sure you want to {action} the computer?')
-                        confirmation = takeCommand().lower()
-                        if confirmation in {'yes', 'yes please', 'confirm', 'do it'}:
-                            speak(f'{action.capitalize()}ing the computer.')
-                            if action == 'restart':
-                                os.system('shutdown /r /t 5')
-                            else:
-                                os.system('shutdown /s /t 5')
-                        else:
-                            speak('Cancelled.')
-                    elif 'weather' in query:
-                        weather()
-                    elif 'news' in query:
-                        try:
-                            speak_news()
-                        except Exception as error:
-                            print(f'News error: {error}')
-                            speak('News is currently unavailable.')
-                    elif 'wikipedia' in query or 'tell me about' in query:
-                        topic = query.replace('wikipedia', '').replace('tell me about', '').strip()
-                        if topic:
-                            try:
-                                speak('Searching Wikipedia.')
-                                results = wikipedia.summary(topic, sentences=2)
-                                print(results)
-                                speak(results)
-                            except Exception as error:
-                                print(f'Wikipedia error: {error}')
-                                speak('I could not find that information.')
-                    elif 'your name' in query:
-                        speak('My name is JARVIS.')
-                    elif 'who made you' in query:
-                        speak('I was created by my AI master.')
-                    elif 'joke' in query:
-                        joke()
-                    elif 'cpu' in query:
-                        cpu()
-                    elif 'screenshot' in query:
-                        speak('Taking a screenshot.')
-                        screenshot()
-                    elif 'sleep' in query or query in {'exit', 'quit', 'goodbye'}:
-                        speak('Goodbye.')
-                        return False
-                    else:
-                        speak("I don't know how to perform that command yet.")
-                except Exception as error:
-                    print(f'Command error: {error}')
-                    speak('I could not complete that command, but I am still listening.')
-                return True
-
-        elif 'voice' in query:
-            if 'female' in query:
-                engine.setProperty('voice', voices[0].id)
-            else:
-                engine.setProperty('voice', voices[1].id)
-            speak("Hello Sir, I have switched my voice. How is it?")
-
-        elif 'email to gaurav' in query:
-            try:
-                speak('What should I say?')
-                content = takeCommand()
-                to = 'email'
-                self.sendEmail(to, content)
-                speak('Email has been sent!')
-
-            except Exception as e:
-                speak('Sorry sir, Not able to send email at the moment')
-
-    def wishMe(self) -> None:
         hour = datetime.datetime.now().hour
         if hour < 12:
             speak('Good morning, sir.')
@@ -183,7 +38,11 @@ class Jarvis:
             speak('Good afternoon, sir.')
         else:
             speak('Good evening, sir.')
-        weather()
+        try:
+            weather()
+        except Exception as error:
+            print(f'Weather error: {error}')
+            speak('Weather information is currently unavailable.')
         speak('I am JARVIS. Say hey Jarvis followed by a command.')
 
     def _open_url(self, url, message):
@@ -253,7 +112,7 @@ class Jarvis:
             elif 'shutdown' in query or 'restart' in query:
                 action = 'restart' if 'restart' in query else 'shut down'
                 speak(f'Are you sure you want to {action} the computer?')
-                confirmation = (takeCommand() or '').lower()
+                confirmation = (takeCommand() or '').strip().lower()
                 if confirmation in {'yes', 'yes please', 'confirm', 'do it'}:
                     speak(f'{action.capitalize()}ing the computer.')
                     os.system('shutdown /r /t 5' if action == 'restart' else 'shutdown /s /t 5')
