@@ -1,3 +1,45 @@
+## Reliable Windows Assistant
+
+The assistant now uses a bounded microphone listener and a command router backed by
+`desktop_actions.py`. Recognized commands perform real browser, application, file,
+clipboard, keyboard, mouse, media, screenshot, system-information, reminder, and
+safe terminal actions. Every action reports success or failure and failures return
+the assistant to the listening loop.
+
+### Start on Windows
+
+From the repository root:
+
+```powershell
+Set-Location "J.A.R.V.I.S-master"
+..\.venv\Scripts\python.exe .\jarvis.py
+```
+
+To skip face authentication when no camera/model is available:
+
+```powershell
+..\.venv\Scripts\python.exe .\jarvis.py --skip-face
+```
+
+Install the existing dependencies with:
+
+```powershell
+..\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
+```
+
+### Supported command families
+
+- Wake word: `Hey Jarvis`, followed by a command; silence and unclear speech are retried.
+- Websites and search: open YouTube, Google, Gmail, GitHub, ChatGPT, Instagram, LinkedIn; search Google, YouTube, or the web.
+- Applications: Chrome, Edge, VS Code, Notepad, Calculator, File Explorer, Command Prompt, PowerShell, Settings, Task Manager.
+- Files: open Desktop/Downloads/Documents, create folders/files, read text files, list/find files, rename, copy, move, and confirmed delete.
+- Desktop: screenshots, clipboard, type/keys, click/scroll, volume, media keys, minimize/maximize/close/switch windows.
+- System: time/date, CPU/RAM/storage/battery/OS/computer/IP information, lock, weather, news, Wikipedia, reminders, and approved commands such as `ipconfig`, `git status`, and version checks.
+- Confirmed actions: delete and shutdown/restart. Arbitrary shell commands, dangerous system changes, and destructive directory operations are refused.
+
+The face-recognition model remains supported. If the camera or model is unavailable,
+J.A.R.V.I.S. reports that condition and starts the voice assistant; an authentication
+failure still prevents entry unless the user explicitly chooses `--skip-face`.
 <h1 align="center">J.A.R.V.I.S </h1> 
 
 <div align="center">

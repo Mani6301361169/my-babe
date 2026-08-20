@@ -19,16 +19,23 @@ import re
 import shutil
 import subprocess
 import urllib.parse
+import logging
+from pathlib import Path
+from desktop_actions import DesktopActions
 
 engine = pyttsx3.init()
 voices = engine.getProperty('voices')
 engine.setProperty('voice', voices[0].id)
+
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+LOGGER = logging.getLogger('jarvis')
 
 # print(voices[0].id)
 
 class Jarvis:
     def __init__(self) -> None:
         self.platform = platform
+        self.desktop = DesktopActions()
 
     def wishMe(self) -> None:
         hour = datetime.datetime.now().hour
@@ -41,119 +48,188 @@ class Jarvis:
         try:
             weather()
         except Exception as error:
-            print(f'Weather error: {error}')
+            LOGGER.error('[ERROR] Weather startup failed: %s', error)
             speak('Weather information is currently unavailable.')
         speak('I am JARVIS. Say hey Jarvis followed by a command.')
 
-    def _open_url(self, url, message):
-        try:
-            if webbrowser.open_new_tab(url):
-                speak(message)
-            else:
-                speak('I could not open the browser.')
-        except webbrowser.Error as error:
-            print(f'Browser error: {error}')
-            speak('I could not open the browser.')
+    def _respond(self, result):
+        success, message = result
+        speak(message)
+        return success
 
-    def _launch_application(self, name, command):
-        try:
-            executable = shutil.which(command)
-            if executable:
-                subprocess.Popen([executable])
-                speak(f'Opening {name}')
-                return
-            if self.platform == 'win32':
-                subprocess.Popen([command], shell=True)
-                speak(f'Opening {name}')
-                return
-        except OSError as error:
-            print(f'Application error: {error}')
-        speak(f'I could not open {name}.')
+    def _confirm(self, prompt):
+        speak(prompt)
+        answer = (takeCommand() or '').strip().lower()
+        return answer in {'yes', 'yes please', 'confirm', 'do it', 'proceed'}
+
+    def _extract_name(self, query, patterns):
+        for pattern in patterns:
+            match = re.search(pattern, query, re.IGNORECASE)
+            if match:
+                return match.group(1).strip().strip('"')
+        return ''
 
     def execute_query(self, query):
         query = (query or '').strip().lower()
         if not query:
             return True
+        LOGGER.info('[COMMAND] %s', query)
         try:
-            if 'open youtube' in query:
-                self._open_url('https://www.youtube.com', 'Opening YouTube.')
-            elif 'open google' in query:
-                self._open_url('https://www.google.com', 'Opening Google.')
-            elif 'open gmail' in query:
-                self._open_url('https://mail.google.com', 'Opening Gmail.')
-            elif 'open github' in query:
-                self._open_url('https://github.com', 'Opening GitHub.')
-            elif 'search youtube' in query:
-                search = re.sub(r'^search youtube(?: for)?', '', query).strip()
-                if search:
-                    url = 'https://www.youtube.com/results?search_query=' + urllib.parse.quote(search)
-                    self._open_url(url, f'Searching YouTube for {search}.')
+            website_aliases = {
+                'youtube': ('https://www.youtube.com', 'YouTube'),
+                'google': ('https://www.google.com', 'Google'),
+                'gmail': ('https://mail.google.com', 'Gmail'),
+                'github': ('https://github.com', 'GitHub'),
+                'chatgpt': ('https://chatgpt.com', 'ChatGPT'),
+                'instagram': ('https://www.instagram.com', 'Instagram'),
+                'linkedin': ('https://www.linkedin.com', 'LinkedIn'),
+            }
+            if any(alias in query for alias in ('search youtube', 'youtube search')):
+                search = re.sub(r'.*?search youtube(?: for)?\s*', '', query).strip()
+                self._respond(self.desktop.search('youtube', search))
+            elif any(text in query for text in ('search google', 'search the web', 'search for ')):
+                search = re.sub(r'^(?:please\s+)?(?:search google|search the web|search for)(?: for)?\s*', '', query).strip()
+                self._respond(self.desktop.search('google', search))
+            elif any(alias in query for alias in website_aliases):
+                alias = next(alias for alias in website_aliases if alias in query)
+                url, name = website_aliases[alias]
+                self._respond(self.desktop.open_url(url, f'Opening {name}.'))
+            elif any(phrase in query for phrase in ('open ', 'launch ', 'start ', 'show ')):
+                app_aliases = {
+                    'visual studio code': 'vs code', 'code editor': 'vs code',
+                    'vs code': 'vs code', 'chrome': 'chrome', 'edge': 'edge',
+                    'notepad': 'notepad', 'calculator': 'calculator', 'calc': 'calculator',
+                    'file explorer': 'file explorer', 'explorer': 'file explorer',
+                    'command prompt': 'command prompt', 'cmd': 'command prompt',
+                    'powershell': 'powershell', 'settings': 'settings', 'task manager': 'task manager',
+                }
+                app = next((value for key, value in app_aliases.items() if key in query), '')
+                if app:
+                    self._respond(self.desktop.open_application(app))
                 else:
-                    speak('What should I search for on YouTube?')
-            elif 'search google' in query or query.startswith('search for '):
-                search = re.sub(r'^(search google|search for)(?: for)?', '', query).strip()
-                if search:
-                    url = 'https://www.google.com/search?q=' + urllib.parse.quote(search)
-                    self._open_url(url, f'Searching Google for {search}.')
-                else:
-                    speak('What should I search for?')
-            elif 'open chrome' in query:
-                self._launch_application('Chrome', 'chrome.exe')
-            elif 'open notepad' in query:
-                self._launch_application('Notepad', 'notepad.exe')
-            elif 'open calculator' in query or 'open calc' in query:
-                self._launch_application('Calculator', 'calc.exe')
-            elif 'open vs code' in query or 'open visual studio code' in query or 'open code' in query:
-                self._launch_application('VS Code', 'code')
+                    folder = next((name for name in ('downloads', 'documents', 'desktop') if name in query), '')
+                    self._respond(self.desktop.open_folder(folder or query.replace('open', '').strip()))
+            elif query.startswith('close '):
+                app = query[6:].replace('the current application', '').strip()
+                self._respond(self.desktop.window('close') if not app else self.desktop.close_application(app))
+            elif query in {'minimize this window', 'minimize window'}:
+                self._respond(self.desktop.window('minimize'))
+            elif query in {'maximize this window', 'maximize window'}:
+                self._respond(self.desktop.window('maximize'))
+            elif query.startswith('switch to '):
+                self._respond(self.desktop.window('switch', query[10:].strip()))
             elif 'the time' in query or 'what time' in query:
-                speak('The time is ' + datetime.datetime.now().strftime('%I:%M %p'))
+                self._respond((True, 'The time is ' + datetime.datetime.now().strftime('%I:%M %p') + '.'))
             elif "today's date" in query or 'todays date' in query or 'what is the date' in query:
-                speak('Today is ' + datetime.datetime.now().strftime('%A, %B %d, %Y'))
+                self._respond((True, 'Today is ' + datetime.datetime.now().strftime('%A, %B %d, %Y') + '.'))
             elif 'shutdown' in query or 'restart' in query:
                 action = 'restart' if 'restart' in query else 'shut down'
-                speak(f'Are you sure you want to {action} the computer?')
-                confirmation = (takeCommand() or '').strip().lower()
-                if confirmation in {'yes', 'yes please', 'confirm', 'do it'}:
-                    speak(f'{action.capitalize()}ing the computer.')
-                    os.system('shutdown /r /t 5' if action == 'restart' else 'shutdown /s /t 5')
+                if self._confirm(f'Are you sure you want to {action} the computer?'):
+                    self._respond(self.desktop.power('restart' if action == 'restart' else 'shutdown'))
                 else:
                     speak('Cancelled.')
+            elif query == 'lock' or 'lock the computer' in query or 'lock my computer' in query:
+                self._respond(self.desktop.lock())
             elif 'weather' in query:
                 weather()
             elif 'news' in query:
                 try:
                     speak_news()
                 except Exception as error:
-                    print(f'News error: {error}')
+                    LOGGER.error('[ERROR] News failed: %s', error)
                     speak('News is currently unavailable.')
-            elif 'wikipedia' in query or 'tell me about' in query:
-                topic = query.replace('wikipedia', '').replace('tell me about', '').strip()
+            elif any(phrase in query for phrase in ('tell me about', 'what is ', 'who is ')) and not any(
+                phrase in query for phrase in ('cpu', 'ram', 'memory', 'battery', 'storage', 'operating system', 'computer name', 'ip address')
+            ):
+                topic = re.sub(r'^(?:tell me about|what is|who is)\s+', '', query).strip()
                 if topic:
                     try:
-                        results = wikipedia.summary(topic, sentences=2)
-                        print(results)
-                        speak(results)
+                        speak(wikipedia.summary(topic, sentences=2))
                     except Exception as error:
-                        print(f'Wikipedia error: {error}')
+                        LOGGER.error('[ERROR] Information lookup failed: %s', error)
                         speak('I could not find that information.')
+            elif query.startswith('define ') or query.startswith('dictionary '):
+                translate(re.sub(r'^(?:define|dictionary)\s+', '', query).strip())
+            elif 'create a folder' in query or 'make a folder' in query:
+                name = self._extract_name(query, (r'(?:called|named)\s+(.+?)(?:\s+inside\s+.+|\s+on\s+.+)?$', r'folder\s+(.+)$'))
+                parent_match = re.search(r'\s+inside\s+(.+)$', query)
+                parent = parent_match.group(1).strip() if parent_match else 'desktop'
+                self._respond(self.desktop.create_folder(name or 'New Folder', parent))
+            elif 'create a text file' in query or 'create a file' in query:
+                name = self._extract_name(query, (r'(?:called|named)\s+(.+)$', r'file\s+(.+)$'))
+                self._respond(self.desktop.create_file(name or 'notes.txt'))
+            elif query.startswith('rename '):
+                match = re.search(r'rename\s+(.+?)\s+to\s+(.+)$', query)
+                self._respond(self.desktop.rename_file(match.group(1), match.group(2)) if match else (False, 'Please say what to rename and the new name.'))
+            elif query.startswith('copy '):
+                match = re.search(r'copy\s+(.+?)\s+to\s+(.+)$', query)
+                self._respond(self.desktop.copy_file(match.group(1), match.group(2)) if match else (False, 'Please say what to copy and where.'))
+            elif query.startswith('move '):
+                match = re.search(r'move\s+(.+?)\s+to\s+(.+)$', query)
+                self._respond(self.desktop.move_file(match.group(1), match.group(2)) if match else (False, 'Please say what to move and where.'))
+            elif query.startswith('delete '):
+                name = query[7:].replace('the ', '', 1).strip()
+                if self._confirm(f'I found {name}. Do you want me to permanently delete it?'):
+                    self._respond(self.desktop.delete_file(name))
+                else:
+                    speak('Cancelled.')
+            elif 'what files are in' in query or 'list files in' in query:
+                folder = re.sub(r'^(?:what files are in|list files in)\s+', '', query).strip()
+                self._respond(self.desktop.list_files(folder))
+            elif 'find all ' in query and ' files in ' in query:
+                match = re.search(r'find all (\w+) files in (.+)$', query)
+                self._respond(self.desktop.find_files(match.group(2), match.group(1)) if match else (False, 'Please specify a file type and folder.'))
+            elif query.startswith('read '):
+                self._respond(self.desktop.read_file(query[5:].strip()))
+            elif 'screenshot' in query:
+                name = self._extract_name(query, (r'name it\s+([\w.-]+)', r'save.*?as\s+([\w.-]+)')) or 'screenshot.png'
+                self._respond(self.desktop.screenshot(name))
+            elif 'cpu' in query or 'ram' in query or 'memory' in query or 'battery' in query or 'storage' in query or 'operating system' in query or 'computer name' in query or 'ip address' in query:
+                kind = next((item for item in ('cpu', 'ram', 'battery', 'storage', 'operating system', 'computer name', 'ip address') if item in query), 'ram')
+                self._respond(self.desktop.system_info(kind))
+            elif 'increase volume' in query or 'decrease volume' in query or 'mute volume' in query or 'unmute volume' in query:
+                direction = 'up' if 'increase' in query else 'down' if 'decrease' in query else 'mute'
+                self._respond(self.desktop.volume(direction))
+            elif query.startswith('type '):
+                self._respond(self.desktop.keyboard(query))
+            elif query in {'press enter', 'press escape', 'press tab', 'press space'} or query.startswith('press ctrl+') or query.startswith('press alt+'):
+                self._respond(self.desktop.keyboard(query.replace('press ', '')))
+            elif query in {'click', 'double click', 'scroll up', 'scroll down'}:
+                self._respond(self.desktop.mouse(query))
+            elif 'clear the clipboard' in query or 'clear clipboard' in query:
+                self._respond(self.desktop.clipboard_clear())
+            elif 'what is currently copied' in query or 'what is on the clipboard' in query:
+                self._respond(self.desktop.clipboard_get())
+            elif query.startswith('copy this text '):
+                self._respond(self.desktop.clipboard_set(query[15:]))
+            elif 'open display settings' in query:
+                self._respond(self.desktop.open_settings('display'))
+            elif 'open network settings' in query or 'turn wi-fi' in query or 'turn wifi' in query:
+                self._respond(self.desktop.open_settings('network'))
+            elif 'open sound settings' in query:
+                self._respond(self.desktop.open_settings('sound'))
+            elif 'play music' in query or query.startswith('play '):
+                self._respond(self.desktop.media('play'))
+            elif query in {'pause', 'resume', 'next song', 'previous song'}:
+                action = 'next' if query == 'next song' else 'previous' if query == 'previous song' else query
+                self._respond(self.desktop.media(action))
+            elif query.startswith('run '):
+                self._respond(self.desktop.run_safe_command(query[4:].strip()))
+            elif 'remind me in ' in query:
+                match = re.search(r'remind me in (\d+) minutes? to (.+)$', query)
+                self._respond(self.desktop.reminder(int(match.group(1)) * 60, match.group(2)) if match else (False, 'Please say: remind me in ten minutes to do something.'))
             elif 'your name' in query:
-                speak('My name is JARVIS.')
-            elif 'who made you' in query:
-                speak('I was created by my AI master.')
+                self._respond((True, 'My name is JARVIS.'))
             elif 'joke' in query:
                 joke()
-            elif 'cpu' in query:
-                cpu()
-            elif 'screenshot' in query:
-                speak('Taking a screenshot.')
-                screenshot()
-            elif 'sleep' in query or query in {'exit', 'quit', 'goodbye'}:
+            elif query in {'sleep', 'exit', 'quit', 'goodbye'}:
                 speak('Goodbye.')
                 return False
             else:
                 speak("I don't know how to perform that command yet.")
+                LOGGER.info('[INTENT] UNKNOWN')
         except Exception as error:
-            print(f'Command error: {error}')
+            LOGGER.exception('[ERROR] Command failed: %s', error)
             speak('I could not complete that command, but I am still listening.')
         return True
 
@@ -179,64 +255,61 @@ def wakeUpJARVIS():
 
         if bot_.execute_query(command) is False:
             break
-               
+ 
+
+def run_face_authentication():
+    """Return True on success, False on rejection, None when unavailable."""
+    base = Path(__file__).resolve().parent
+    model_path = base / 'Face-Recognition' / 'trainer' / 'trainer.yml'
+    cascade_path = base / 'Face-Recognition' / 'haarcascade_frontalface_default.xml'
+    camera = None
+    try:
+        if not hasattr(cv2, 'face') or not model_path.is_file() or not cascade_path.is_file():
+            return None
+        recognizer = cv2.face.LBPHFaceRecognizer_create()
+        recognizer.read(str(model_path))
+        face_cascade = cv2.CascadeClassifier(str(cascade_path))
+        camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        if not camera.isOpened():
+            return None
+        camera.set(3, 640)
+        camera.set(4, 480)
+        min_w = 0.1 * camera.get(3)
+        min_h = 0.1 * camera.get(4)
+        while True:
+            ret, image = camera.read()
+            if not ret or image is None:
+                LOGGER.error('[ERROR] Camera frame unavailable.')
+                return None
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5, minSize=(int(min_w), int(min_h)))
+            for x, y, width, height in faces:
+                _, accuracy = recognizer.predict(gray[y:y + height, x:x + width])
+                if accuracy < 100:
+                    return True
+                speak('Optical face recognition failed.')
+                return False
+    except (AttributeError, OSError, cv2.error) as error:
+        LOGGER.error('[ERROR] Face authentication unavailable: %s', error)
+        return None
+    finally:
+        if camera is not None:
+            camera.release()
+        cv2.destroyAllWindows()
+
 
 if __name__ == '__main__':
-    
-    recognizer = cv2.face.LBPHFaceRecognizer_create() # Local Binary Patterns Histograms
-    recognizer.read('./Face-Recognition/trainer/trainer.yml')   #load trained model
-    cascadePath = "./Face-Recognition/haarcascade_frontalface_default.xml"
-    faceCascade = cv2.CascadeClassifier(cascadePath) #initializing haar cascade for object detection approach
+    import sys
 
-    font = cv2.FONT_HERSHEY_SIMPLEX #denotes the font type
-
-
-    id = 2 #number of persons you want to Recognize
-
-
-    names = ['','Gaurav']  #names, leave first empty bcz counter starts from 0
-
-
-    cam = cv2.VideoCapture(0, cv2.CAP_DSHOW) #cv2.CAP_DSHOW to remove warning
-    cam.set(3, 640) # set video FrameWidht
-    cam.set(4, 480) # set video FrameHeight
-
-    # Define min window size to be recognized as a face
-    minW = 0.1*cam.get(3)
-    minH = 0.1*cam.get(4)
-
-    # flag = True
-
-    while True:
-
-        ret, img =cam.read() #read the frames using the above created object
-
-        converted_image = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)  #The function converts an input image from one color space to another
-
-        faces = faceCascade.detectMultiScale( 
-            converted_image,
-            scaleFactor = 1.2,
-            minNeighbors = 5,
-            minSize = (int(minW), int(minH)),
-        )
-
-        for(x,y,w,h) in faces:
-
-            cv2.rectangle(img, (x,y), (x+w,y+h), (0,255,0), 2) #used to draw a rectangle on any image
-
-            id, accuracy = recognizer.predict(converted_image[y:y+h,x:x+w]) #to predict on every single image
-
-            # Check if accuracy is less them 100 ==> "0" is perfect match 
-            if (accuracy < 100):
-                
-                # Do a bit of cleanup
-                speak("Optical Face Recognition Done. Welcome")
-                cam.release()
-                cv2.destroyAllWindows()
-                wakeUpJARVIS()
-            else:
-                speak("Optical Face Recognition Failed")
-                break;
+    authentication = None if '--skip-face' in sys.argv else run_face_authentication()
+    if authentication is False:
+        speak('Face authentication failed.')
+    else:
+        if authentication is None:
+            speak('Face authentication is unavailable. Starting voice assistant.')
+        else:
+            speak('Optical face recognition done. Welcome.')
+        wakeUpJARVIS()
 
 
     

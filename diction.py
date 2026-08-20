@@ -1,39 +1,8 @@
 from difflib import get_close_matches
-import pyttsx3
 import json
-import speech_recognition as sr
+from helpers import speak, takeCommand
 
-data = json.load(open('data.json'))
-engine = pyttsx3.init()
-voices = engine.getProperty('voices')
-engine.setProperty('voice', voices[0].id)
-
-
-def speak(audio):
-    engine.say(audio)
-    engine.runAndWait()
-
-
-def takeCommand():
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        print('Listening...')
-        r.pause_threshold = 1
-        r.energy_threshold = 494
-        r.adjust_for_ambient_noise(source, duration=1.5)
-        audio = r.listen(source)
-
-    try:
-        print('Recognizing..')
-        query = r.recognize_google(audio, language='en-in')
-        print(f'User said: {query}\n')
-
-    except Exception as e:
-        # print(e)
-
-        print('Say that again please...')
-        return 'None'
-    return query
+data = json.load(open('data.json', encoding='utf-8'))
 
 
 def translate(word):
@@ -44,7 +13,7 @@ def translate(word):
         x = get_close_matches(word, data.keys())[0]
         speak('Did you mean ' + x +
               ' instead,  respond with Yes or No.')
-        ans = takeCommand().lower()
+        ans = (takeCommand() or '').lower()
         if 'yes' in ans:
             speak(data[x])
         elif 'no' in ans:

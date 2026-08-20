@@ -6,6 +6,8 @@ import speech_recognition as sr
 import json
 import requests
 import geocoder
+import logging
+from pathlib import Path
 from difflib import get_close_matches
 
 
@@ -13,7 +15,8 @@ engine = pyttsx3.init()
 voices = engine.getProperty('voices')
 engine.setProperty('voice', voices[0].id)
 g = geocoder.ip('me')
-data = json.load(open('data.json'))
+data = json.load(open('data.json', encoding='utf-8'))
+LOGGER = logging.getLogger('jarvis')
 
 def speak(audio) -> None:
     print(f'J.A.R.V.I.S.: {audio}')
@@ -22,19 +25,24 @@ def speak(audio) -> None:
 
 def screenshot() -> None:
     img = pyautogui.screenshot()
-    img.save('path of folder you want to save/screenshot.png')
+    path = Path.home() / 'Desktop' / 'screenshot.png'
+    path.parent.mkdir(exist_ok=True)
+    img.save(path)
+    speak(f'Screenshot saved to {path.name}.')
 
 def cpu() -> None:
     usage = str(psutil.cpu_percent())
-    speak("CPU is at"+usage)
+    speak("CPU is at " + usage + " percent.")
 
     battery = psutil.sensors_battery()
-    speak("battery is at")
-    speak(battery.percent)
+    if battery:
+        speak(f"Battery is at {battery.percent} percent.")
+    else:
+        speak('Battery information is unavailable.')
 
 def joke() -> None:
-    for i in range(5):
-        speak(pyjokes.get_jokes()[i])
+    for joke_text in pyjokes.get_jokes()[:5]:
+        speak(joke_text)
 
 def takeCommand() -> str:
     r = sr.Recognizer()
@@ -43,8 +51,8 @@ def takeCommand() -> str:
             print('Listening...')
             r.pause_threshold = 0.8
             r.energy_threshold = 494
-            r.adjust_for_ambient_noise(source, duration=0.5)
-            audio = r.listen(source, timeout=5, phrase_time_limit=8)
+            r.adjust_for_ambient_noise(source, duration=0.3)
+            audio = r.listen(source, timeout=4, phrase_time_limit=8)
 
         print('Recognizing..')
         query = r.recognize_google(audio, language='en-in')
@@ -54,9 +62,11 @@ def takeCommand() -> str:
         print('No speech detected.')
     except sr.UnknownValueError:
         print('You said: [unrecognized]')
-    except sr.RequestError:
+    except sr.RequestError as error:
+        LOGGER.error('[ERROR] Speech recognition request failed: %s', error)
         print('Speech recognition service is unavailable.')
     except (OSError, AttributeError) as error:
+        LOGGER.error('[ERROR] Microphone error: %s', error)
         print(f'Microphone error: {error}')
     except Exception as error:
         print(f'Speech input error: {error}')
