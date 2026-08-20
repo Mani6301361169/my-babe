@@ -69,10 +69,27 @@ class Jarvis:
                 return match.group(1).strip().strip('"')
         return ''
 
+    def _plan(self, query):
+        """Split only unambiguous multi-step commands into executable steps."""
+        parts = re.split(r'\s*(?:;|\bthen\b|\band then\b)\s*', query, flags=re.IGNORECASE)
+        if len(parts) == 1:
+            parts = re.split(
+                r'\s+and\s+(?=(?:open|launch|start|create|make|search|take|type|press|close|find|read|copy|move|rename|go|navigate|play|pause|increase|decrease|check|what|tell)\b)',
+                query,
+                flags=re.IGNORECASE,
+            )
+        return [part.strip() for part in parts if part.strip()]
+
     def execute_query(self, query):
-        query = (query or '').strip().lower()
+        original_query = (query or '').strip()
+        query = original_query.lower()
         if not query:
             return True
+        steps = self._plan(original_query)
+        if len(steps) > 1:
+            LOGGER.info('[INTENT] PLAN: %s', steps)
+            outcomes = [self.execute_query(step) for step in steps]
+            return all(outcome is not False for outcome in outcomes)
         LOGGER.info('[COMMAND] %s', query)
         try:
             website_aliases = {
@@ -94,6 +111,9 @@ class Jarvis:
                 alias = next(alias for alias in website_aliases if alias in query)
                 url, name = website_aliases[alias]
                 self._respond(self.desktop.open_url(url, f'Opening {name}.'))
+            elif re.search(r'^(?:open|navigate to|go to)\s+https?://', query):
+                url = re.sub(r'^(?:open|navigate to|go to)\s+', '', original_query, flags=re.IGNORECASE).strip()
+                self._respond(self.desktop.open_url(url, f'Opening {url}.'))
             elif any(phrase in query for phrase in ('open ', 'launch ', 'start ', 'show ')):
                 app_aliases = {
                     'visual studio code': 'vs code', 'code editor': 'vs code',
@@ -158,6 +178,15 @@ class Jarvis:
             elif 'create a text file' in query or 'create a file' in query:
                 name = self._extract_name(query, (r'(?:called|named)\s+(.+)$', r'file\s+(.+)$'))
                 self._respond(self.desktop.create_file(name or 'notes.txt'))
+            elif query.startswith('write ') or query.startswith('append ') or query.startswith('edit '):
+                match = re.search(r'^(?:write|append)\s+(.+?)\s+(?:to|in)\s+(?:the\s+)?(.+)$', original_query, re.IGNORECASE)
+                edit_match = re.search(r'^edit\s+(.+?)\s+(?:to say|with)\s+(.+)$', original_query, re.IGNORECASE)
+                if edit_match:
+                    self._respond(self.desktop.write_file(edit_match.group(1), edit_match.group(2), append=True))
+                elif match:
+                    self._respond(self.desktop.write_file(match.group(2), match.group(1), append=query.startswith('append ')))
+                else:
+                    self._respond((False, 'Please say what text to write and which file to update.'))
             elif query.startswith('rename '):
                 match = re.search(r'rename\s+(.+?)\s+to\s+(.+)$', query)
                 self._respond(self.desktop.rename_file(match.group(1), match.group(2)) if match else (False, 'Please say what to rename and the new name.'))
@@ -166,7 +195,12 @@ class Jarvis:
                 self._respond(self.desktop.copy_file(match.group(1), match.group(2)) if match else (False, 'Please say what to copy and where.'))
             elif query.startswith('move '):
                 match = re.search(r'move\s+(.+?)\s+to\s+(.+)$', query)
-                self._respond(self.desktop.move_file(match.group(1), match.group(2)) if match else (False, 'Please say what to move and where.'))
+                if not match:
+                    self._respond((False, 'Please say what to move and where.'))
+                elif self._confirm(f'Are you sure you want to move {match.group(1)} to {match.group(2)}?'):
+                    self._respond(self.desktop.move_file(match.group(1), match.group(2)))
+                else:
+                    speak('Cancelled.')
             elif query.startswith('delete '):
                 name = query[7:].replace('the ', '', 1).strip()
                 if self._confirm(f'I found {name}. Do you want me to permanently delete it?'):
@@ -191,7 +225,7 @@ class Jarvis:
                 direction = 'up' if 'increase' in query else 'down' if 'decrease' in query else 'mute'
                 self._respond(self.desktop.volume(direction))
             elif query.startswith('type '):
-                self._respond(self.desktop.keyboard(query))
+                self._respond(self.desktop.keyboard('type ' + original_query[5:]))
             elif query in {'press enter', 'press escape', 'press tab', 'press space'} or query.startswith('press ctrl+') or query.startswith('press alt+'):
                 self._respond(self.desktop.keyboard(query.replace('press ', '')))
             elif query in {'click', 'double click', 'scroll up', 'scroll down'}:
@@ -201,7 +235,7 @@ class Jarvis:
             elif 'what is currently copied' in query or 'what is on the clipboard' in query:
                 self._respond(self.desktop.clipboard_get())
             elif query.startswith('copy this text '):
-                self._respond(self.desktop.clipboard_set(query[15:]))
+                self._respond(self.desktop.clipboard_set(original_query[15:]))
             elif 'open display settings' in query:
                 self._respond(self.desktop.open_settings('display'))
             elif 'open network settings' in query or 'turn wi-fi' in query or 'turn wifi' in query:
@@ -251,7 +285,8 @@ def wakeUpJARVIS():
             if not command:
                 command = (takeCommand() or '').lower()
         else:
-            command = query
+            LOGGER.info('[VOICE] Ignoring speech without wake word.')
+            continue
 
         if bot_.execute_query(command) is False:
             break

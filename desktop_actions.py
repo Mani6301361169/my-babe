@@ -91,7 +91,9 @@ class DesktopActions:
                 executable = next((shutil.which(item) for item in commands if shutil.which(item)), None)
                 if not executable:
                     return self._result(False, f"{requested.title()} is not installed on this computer.")
-                subprocess.Popen([executable], close_fds=True)
+                process = subprocess.Popen([executable], close_fds=True)
+                if process.poll() is not None:
+                    return self._result(False, f"I couldn't open {requested}.")
             time.sleep(0.15)
             return self._result(True, f"{requested.title()} is open.", f"Opening {requested}")
         except (OSError, ValueError) as error:
@@ -165,6 +167,19 @@ class DesktopActions:
         except OSError as error:
             LOGGER.error("[ERROR] File creation failed: %s", error)
             return self._result(False, "I couldn't create that file.")
+
+    def write_file(self, name: str, content: str, append: bool = False) -> tuple[bool, str]:
+        path = self.resolve_path(name)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            mode = "a" if append else "w"
+            with path.open(mode, encoding="utf-8") as file:
+                file.write(content + ("\n" if content else ""))
+            verb = "Updated" if append else "Wrote"
+            return self._result(True, f"{verb} {path.name}.")
+        except OSError as error:
+            LOGGER.error("[ERROR] File write failed: %s", error)
+            return self._result(False, f"I couldn't update {path.name}.")
 
     def rename_file(self, old_name: str, new_name: str) -> tuple[bool, str]:
         source = self.resolve_path(old_name)
@@ -249,7 +264,10 @@ class DesktopActions:
     def screenshot(self, name: str = "screenshot.png") -> tuple[bool, str]:
         path = self.desktop / name.strip().strip('"')
         try:
+            path.parent.mkdir(parents=True, exist_ok=True)
             pyautogui.screenshot().save(path)
+            if not path.is_file() or path.stat().st_size == 0:
+                return self._result(False, "The screenshot was not saved correctly.")
             return self._result(True, f"Screenshot saved to {path.name}.")
         except (OSError, pyautogui.FailSafeException) as error:
             LOGGER.error("[ERROR] Screenshot failed: %s", error)

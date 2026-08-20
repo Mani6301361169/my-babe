@@ -3,8 +3,9 @@
 The assistant now uses a bounded microphone listener and a command router backed by
 `desktop_actions.py`. Recognized commands perform real browser, application, file,
 clipboard, keyboard, mouse, media, screenshot, system-information, reminder, and
-safe terminal actions. Every action reports success or failure and failures return
-the assistant to the listening loop.
+safe terminal actions. Multi-step requests such as `open Chrome and then search
+YouTube for Python` are planned and executed sequentially. Every action reports
+success or failure and failures return the assistant to the listening loop.
 
 ### Start on Windows
 
@@ -29,7 +30,7 @@ Install the existing dependencies with:
 
 ### Supported command families
 
-- Wake word: `Hey Jarvis`, followed by a command; silence and unclear speech are retried.
+- Wake word: `Hey Jarvis`, followed by a command; speech without the wake word is ignored, and silence/unclear speech are retried.
 - Websites and search: open YouTube, Google, Gmail, GitHub, ChatGPT, Instagram, LinkedIn; search Google, YouTube, or the web.
 - Applications: Chrome, Edge, VS Code, Notepad, Calculator, File Explorer, Command Prompt, PowerShell, Settings, Task Manager.
 - Files: open Desktop/Downloads/Documents, create folders/files, read text files, list/find files, rename, copy, move, and confirmed delete.
