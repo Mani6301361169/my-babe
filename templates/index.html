@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S - Voice-Activated AI Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>J.A.R.V.I.S</h1>
+            <p class="subtitle">Voice-Activated AI Assistant</p>
+        </header>
+
+        <!-- Main Interface -->
+        <div class="main-interface">
+            <!-- Arc Reactor -->
+            <div class="arc-reactor-container">
+                <div class="arc-reactor">
+                    <svg viewBox="0 0 200 200" class="arc-reactor-svg">
+                        <!-- Outer rings -->
+                        <circle cx="100" cy="100" r="95" class="arc-ring arc-ring-1"/>
+                        <circle cx="100" cy="100" r="85" class="arc-ring arc-ring-2"/>
+                        <circle cx="100" cy="100" r="75" class="arc-ring arc-ring-3"/>
+                        
+                        <!-- Core -->
+                        <circle cx="100" cy="100" r="45" class="arc-core"/>
+                        <circle cx="100" cy="100" r="40" class="arc-core-inner"/>
+                        
+                        <!-- Energy lines -->
+                        <line x1="100" y1="100" x2="100" y2="20" class="arc-energy-line"/>
+                        <line x1="100" y1="100" x2="171" y2="45" class="arc-energy-line"/>
+                        <line x1="100" y1="100" x2="171" y2="155" class="arc-energy-line"/>
+                        <line x1="100" y1="100" x2="100" y2="180" class="arc-energy-line"/>
+                        <line x1="100" y1="100" x2="29" y2="155" class="arc-energy-line"/>
+                        <line x1="100" y1="100" x2="29" y2="45" class="arc-energy-line"/>
+                        
+                        <!-- Glowing pulse -->
+                        <circle cx="100" cy="100" r="35" class="arc-pulse" id="arcPulse"/>
+                    </svg>
+                    
+                    <div class="arc-status" id="arcStatus">LISTENING</div>
+                </div>
+            </div>
+
+            <!-- Status Display -->
+            <div class="status-panel">
+                <div class="status-item">
+                    <span class="label">Status:</span>
+                    <span class="value" id="statusValue">IDLE</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Mode:</span>
+                    <span class="value" id="modeValue">VOICE</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">System:</span>
+                    <span class="value" id="systemValue">READY</span>
+                </div>
+            </div>
+
+            <!-- Control Buttons -->
+            <div class="controls">
+                <button class="btn btn-listen" id="btnListen" title="Start listening">
+                    <span class="icon">🎤</span>
+                    <span class="text">Listen</span>
+                </button>
+                <button class="btn btn-text" id="btnText" title="Type command">
+                    <span class="icon">⌨️</span>
+                    <span class="text">Text</span>
+                </button>
+                <button class="btn btn-clear" id="btnClear" title="Clear">
+                    <span class="icon">🔄</span>
+                    <span class="text">Clear</span>
+                </button>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+                <textarea id="commandInput" class="command-input" placeholder="Enter voice or text command..."></textarea>
+            </div>
+
+            <!-- Output Area -->
+            <div class="output-area">
+                <div class="output-header">Response</div>
+                <div class="output-content" id="outputContent">Awaiting command...</div>
+            </div>
+
+            <!-- Chat History -->
+            <div class="history-panel">
+                <div class="history-header">
+                    <span>Conversation History</span>
+                    <button class="btn-icon" id="btnClearHistory" title="Clear history">✕</button>
+                </div>
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">No history yet</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-header">
+                <h2>Settings</h2>
+                <button class="btn-close" id="btnCloseSettings">✕</button>
+            </div>
+            
+            <div class="settings-content">
+                <!-- LLM Configuration -->
+                <div class="setting-group">
+                    <label>LLM Provider:</label>
+                    <select id="llmProvider">
+                        <option value="openai">OpenAI (GPT-3.5)</option>
+                        <option value="ollama">Local Ollama</option>
+                    </select>
+                </div>
+
+                <!-- Speech Recognition -->
+                <div class="setting-group">
+                    <label>Speech Recognition:</label>
+                    <select id="speechEngine">
+                        <option value="google">Google (Free)</option>
+                        <option value="whisper">OpenAI Whisper (Accurate)</option>
+                    </select>
+                </div>
+
+                <!-- Text-to-Speech -->
+                <div class="setting-group">
+                    <label>Text-to-Speech:</label>
+                    <select id="ttsEngine">
+                        <option value="pyttsx3">Local pyttsx3 (Free)</option>
+                        <option value="elevenlabs">ElevenLabs (Natural)</option>
+                    </select>
+                </div>
+
+                <!-- Volume -->
+                <div class="setting-group">
+                    <label>System Volume:</label>
+                    <input type="range" id="volumeControl" min="0" max="100" value="70">
+                    <span id="volumeValue">70%</span>
+                </div>
+
+                <!-- Theme -->
+                <div class="setting-group">
+                    <label>Theme:</label>
+                    <select id="themeSelect">
+                        <option value="dark">Dark (Default)</option>
+                        <option value="light">Light</option>
+                        <option value="blue">Cyberpunk Blue</option>
+                    </select>
+                </div>
+
+                <!-- API Keys -->
+                <div class="setting-group">
+                    <label>OpenAI API Key:</label>
+                    <input type="password" id="openaiKey" placeholder="sk-...">
+                </div>
+
+                <!-- Save Button -->
+                <button class="btn btn-save" id="btnSaveSettings">Save Settings</button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <button class="btn btn-settings" id="btnSettings" title="Settings">⚙️</button>
+            <button class="btn btn-info" id="btnInfo" title="System Info">ℹ️</button>
+            <span class="footer-text">J.A.R.V.I.S v2.0 | Ready to assist</span>
+        </footer>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

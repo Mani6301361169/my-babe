@@ -1,0 +1,771 @@
+/* ============================================================================
+   J.A.R.V.I.S Web UI - Futuristic Arc Reactor Design
+   Dark theme with glowing effects
+   ============================================================================ */
+
+:root {
+    /* Colors */
+    --color-primary: #00d4ff;
+    --color-secondary: #ff6b00;
+    --color-accent: #00ff88;
+    --color-dark: #0a0e27;
+    --color-darker: #050810;
+    --color-text: #e0e0e0;
+    --color-text-dim: #999999;
+    --color-border: #1a1f3a;
+    --color-success: #00ff88;
+    --color-warning: #ffaa00;
+    --color-error: #ff3333;
+    
+    /* Glow Effects */
+    --glow-primary: 0 0 20px rgba(0, 212, 255, 0.5);
+    --glow-secondary: 0 0 20px rgba(255, 107, 0, 0.5);
+    --glow-accent: 0 0 15px rgba(0, 255, 136, 0.5);
+    
+    /* Animations */
+    --anim-duration: 0.3s;
+}
+
+/* ============================================================================
+   Global Styles
+   ============================================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    background: linear-gradient(135deg, var(--color-darker) 0%, var(--color-dark) 100%);
+    color: var(--color-text);
+    line-height: 1.6;
+}
+
+/* ============================================================================
+   Container & Layout
+   ============================================================================ */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%23050810" width="100" height="100"/><circle cx="50" cy="50" r="1" fill="%231a1f3a" opacity="0.5"/></svg>');
+}
+
+.header {
+    padding: 20px;
+    text-align: center;
+    border-bottom: 2px solid var(--color-primary);
+    background: rgba(10, 14, 39, 0.9);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.2);
+}
+
+.header h1 {
+    font-size: 2.5em;
+    color: var(--color-primary);
+    text-shadow: var(--glow-primary);
+    letter-spacing: 3px;
+    margin-bottom: 5px;
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.header .subtitle {
+    font-size: 0.9em;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.main-interface {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    gap: 20px;
+}
+
+/* Responsive layout */
+@media (max-width: 1400px) {
+    .main-interface {
+        grid-template-columns: 1fr;
+    }
+}
+
+.footer {
+    padding: 15px;
+    border-top: 2px solid var(--color-primary);
+    background: rgba(10, 14, 39, 0.9);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+}
+
+.footer-text {
+    font-size: 0.85em;
+    color: var(--color-text-dim);
+}
+
+/* ============================================================================
+   Arc Reactor - Main Visual Element
+   ============================================================================ */
+
+.arc-reactor-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    padding: 20px;
+}
+
+.arc-reactor {
+    position: relative;
+    width: 250px;
+    height: 250px;
+    perspective: 1000px;
+}
+
+.arc-reactor-svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.5));
+}
+
+/* Arc Rings */
+.arc-ring {
+    fill: none;
+    stroke-width: 2;
+    stroke: var(--color-primary);
+    opacity: 0.6;
+    animation: rotate-ring linear infinite;
+}
+
+.arc-ring-1 {
+    stroke-dasharray: 600;
+    stroke-dashoffset: 0;
+    animation-duration: 15s;
+}
+
+.arc-ring-2 {
+    stroke-dasharray: 530;
+    stroke-dashoffset: 0;
+    animation-duration: 20s;
+    animation-direction: reverse;
+}
+
+.arc-ring-3 {
+    stroke-dasharray: 470;
+    stroke-dashoffset: 0;
+    animation-duration: 25s;
+}
+
+/* Arc Core */
+.arc-core {
+    fill: none;
+    stroke: var(--color-secondary);
+    stroke-width: 3;
+    opacity: 0.8;
+    filter: drop-shadow(0 0 15px rgba(255, 107, 0, 0.6));
+}
+
+.arc-core-inner {
+    fill: rgba(0, 212, 255, 0.1);
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    opacity: 0.9;
+    animation: pulse-core 2s ease-in-out infinite;
+}
+
+/* Energy Lines */
+.arc-energy-line {
+    stroke: var(--color-accent);
+    stroke-width: 1.5;
+    opacity: 0.5;
+    filter: drop-shadow(0 0 5px rgba(0, 255, 136, 0.5));
+    animation: energy-pulse 2s ease-in-out infinite;
+}
+
+.arc-pulse {
+    fill: rgba(0, 212, 255, 0.2);
+    stroke: var(--color-primary);
+    stroke-width: 1;
+    animation: pulse-expand 2s ease-in-out infinite;
+}
+
+/* Arc Status Text */
+.arc-status {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.8em;
+    font-weight: bold;
+    color: var(--color-primary);
+    text-shadow: var(--glow-primary);
+    letter-spacing: 2px;
+    animation: status-blink 1s ease-in-out infinite;
+}
+
+/* ============================================================================
+   Status Panel
+   ============================================================================ */
+
+.status-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    background: rgba(10, 14, 39, 0.8);
+    border: 2px solid var(--color-primary);
+    border-radius: 8px;
+    box-shadow: var(--glow-primary);
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: rgba(26, 31, 58, 0.5);
+    border-left: 3px solid var(--color-accent);
+    border-radius: 4px;
+}
+
+.status-item .label {
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 1px;
+}
+
+.status-item .value {
+    color: var(--color-accent);
+    font-weight: bold;
+    text-shadow: var(--glow-accent);
+}
+
+/* ============================================================================
+   Controls & Buttons
+   ============================================================================ */
+
+.controls {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    justify-content: center;
+}
+
+.btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(255, 107, 0, 0.1));
+    border: 2px solid var(--color-primary);
+    border-radius: 8px;
+    color: var(--color-primary);
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.8em;
+    transition: all var(--anim-duration) ease;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+}
+
+.btn .icon {
+    font-size: 1.5em;
+    display: block;
+}
+
+.btn:hover {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(255, 107, 0, 0.2));
+    box-shadow: var(--glow-primary);
+    transform: translateY(-2px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-listen {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    box-shadow: var(--glow-accent);
+}
+
+.btn-listen:hover {
+    box-shadow: var(--glow-accent);
+}
+
+.btn-listen.active {
+    animation: pulse-button 0.5s ease-in-out infinite;
+}
+
+.btn-text {
+    border-color: var(--color-secondary);
+    color: var(--color-secondary);
+    box-shadow: var(--glow-secondary);
+}
+
+.btn-text:hover {
+    box-shadow: var(--glow-secondary);
+}
+
+.btn-clear {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.btn-settings {
+    padding: 10px 15px;
+    font-size: 1em;
+}
+
+.btn-info {
+    padding: 10px 15px;
+    font-size: 1em;
+}
+
+.btn-save {
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px;
+}
+
+.btn-close, .btn-icon {
+    background: none;
+    border: none;
+    color: var(--color-text);
+    cursor: pointer;
+    font-size: 1.2em;
+    padding: 5px;
+}
+
+.btn-close:hover, .btn-icon:hover {
+    color: var(--color-primary);
+}
+
+/* ============================================================================
+   Input & Output Areas
+   ============================================================================ */
+
+.input-area {
+    padding: 15px;
+    background: rgba(10, 14, 39, 0.8);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.command-input {
+    width: 100%;
+    height: 80px;
+    padding: 12px;
+    background: rgba(26, 31, 58, 0.6);
+    border: 1px solid var(--color-primary);
+    border-radius: 4px;
+    color: var(--color-text);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    resize: none;
+    outline: none;
+    transition: border var(--anim-duration) ease;
+}
+
+.command-input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.output-area {
+    padding: 15px;
+    background: rgba(10, 14, 39, 0.8);
+    border: 2px solid var(--color-primary);
+    border-radius: 8px;
+    box-shadow: var(--glow-primary);
+}
+
+.output-header {
+    font-size: 0.85em;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.output-content {
+    padding: 15px;
+    background: rgba(26, 31, 58, 0.5);
+    border-left: 3px solid var(--color-accent);
+    border-radius: 4px;
+    min-height: 100px;
+    color: var(--color-accent);
+    font-size: 0.95em;
+    line-height: 1.8;
+    word-wrap: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* ============================================================================
+   History Panel
+   ============================================================================ */
+
+.history-panel {
+    padding: 15px;
+    background: rgba(10, 14, 39, 0.8);
+    border: 2px solid var(--color-border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    max-height: 400px;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.history-header h3 {
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-primary);
+}
+
+.history-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.history-item {
+    padding: 10px;
+    background: rgba(26, 31, 58, 0.5);
+    border-left: 3px solid var(--color-secondary);
+    border-radius: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all var(--anim-duration) ease;
+}
+
+.history-item:hover {
+    background: rgba(26, 31, 58, 0.8);
+    border-left-color: var(--color-primary);
+}
+
+.history-item .query {
+    color: var(--color-text-dim);
+    margin-bottom: 5px;
+}
+
+.history-item .response {
+    color: var(--color-accent);
+}
+
+.history-empty {
+    padding: 30px 10px;
+    text-align: center;
+    color: var(--color-text-dim);
+    font-size: 0.85em;
+}
+
+/* ============================================================================
+   Settings Panel
+   ============================================================================ */
+
+.settings-panel {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 400px;
+    background: rgba(5, 8, 16, 0.95);
+    border-left: 2px solid var(--color-primary);
+    box-shadow: -20px 0 40px rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    overflow-y: auto;
+    animation: slide-in-right 0.3s ease-out;
+}
+
+.settings-panel.active {
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 2px solid var(--color-primary);
+    background: rgba(10, 14, 39, 0.9);
+}
+
+.settings-header h2 {
+    color: var(--color-primary);
+    text-shadow: var(--glow-primary);
+}
+
+.settings-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.setting-group label {
+    font-size: 0.85em;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.setting-group select,
+.setting-group input {
+    padding: 10px;
+    background: rgba(26, 31, 58, 0.6);
+    border: 1px solid var(--color-primary);
+    border-radius: 4px;
+    color: var(--color-text);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.setting-group select:focus,
+.setting-group input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.setting-group input[type="range"] {
+    cursor: pointer;
+}
+
+.setting-group input[type="password"] {
+    letter-spacing: 2px;
+}
+
+#volumeValue {
+    color: var(--color-accent);
+    font-weight: bold;
+}
+
+/* ============================================================================
+   Toast Notification
+   ============================================================================ */
+
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    background: rgba(10, 14, 39, 0.95);
+    border: 2px solid var(--color-primary);
+    border-radius: 8px;
+    color: var(--color-primary);
+    box-shadow: var(--glow-primary);
+    display: none;
+    z-index: 2000;
+    animation: slide-in-up 0.3s ease-out;
+}
+
+.toast.show {
+    display: block;
+}
+
+.toast.success {
+    border-color: var(--color-success);
+    color: var(--color-success);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+}
+
+.toast.error {
+    border-color: var(--color-error);
+    color: var(--color-error);
+    box-shadow: 0 0 20px rgba(255, 51, 51, 0.5);
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+@keyframes rotate-ring {
+    from {
+        transform: rotate(0deg);
+        stroke-dashoffset: 0;
+    }
+    to {
+        transform: rotate(360deg);
+        stroke-dashoffset: -600;
+    }
+}
+
+@keyframes pulse-core {
+    0%, 100% {
+        r: 40;
+        opacity: 0.8;
+    }
+    50% {
+        r: 42;
+        opacity: 1;
+    }
+}
+
+@keyframes energy-pulse {
+    0%, 100% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+@keyframes pulse-expand {
+    0%, 100% {
+        r: 35;
+        opacity: 0.2;
+    }
+    50% {
+        r: 38;
+        opacity: 0.4;
+    }
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    }
+    50% {
+        text-shadow: 0 0 30px rgba(0, 212, 255, 0.8);
+    }
+}
+
+@keyframes status-blink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes pulse-button {
+    0%, 100% {
+        box-shadow: var(--glow-accent);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(0, 255, 136, 0.8);
+    }
+}
+
+@keyframes slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slide-in-up {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ============================================================================
+   Scrollbars
+   ============================================================================ */
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(26, 31, 58, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-primary);
+    border-radius: 4px;
+    box-shadow: var(--glow-primary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent);
+}
+
+/* ============================================================================
+   Responsive Design
+   ============================================================================ */
+
+@media (max-width: 1024px) {
+    .header h1 {
+        font-size: 1.8em;
+    }
+    
+    .settings-panel {
+        width: 100%;
+        max-height: 80vh;
+        bottom: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        height: auto;
+    }
+    
+    .main-interface {
+        grid-template-columns: 1fr;
+        padding: 10px;
+    }
+    
+    .arc-reactor-container {
+        min-height: 200px;
+    }
+    
+    .arc-reactor {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .settings-panel {
+        width: 100%;
+    }
+}
