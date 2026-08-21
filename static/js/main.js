@@ -237,11 +237,11 @@ class JarvisUI {
                 })
             });
 
-            if (!response.ok) {
-                throw new Error(`API error: ${response.status}`);
-            }
-
             const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || `API error: ${response.status}`);
+            }
 
             if (data.success) {
                 this.displayResponse(data.response);
