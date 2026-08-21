@@ -25,9 +25,14 @@ system_service = SystemControlService()
 
 def execute_local_command(user_text):
     """Execute supported local actions without requiring an LLM."""
-    normalized = user_text.lower().strip()
+    raw_text = user_text.strip()
+    normalized = raw_text.lower()
 
-    match = re.fullmatch(r"open\s+(?:the\s+)?(.+?)\s+and\s+(?:write|type)\s+(.+)", normalized)
+    match = re.fullmatch(
+        r"open\s+(?:the\s+)?(.+?)\s+and\s+(?:write|type)\s+(.+)",
+        raw_text,
+        re.IGNORECASE
+    )
     if match:
         app, text = match.groups()
         opened = system_service.open_application(app)
