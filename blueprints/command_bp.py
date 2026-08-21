@@ -9,6 +9,7 @@ from flask import Blueprint, request, jsonify, current_app
 import logging
 import json
 import re
+import time
 from datetime import datetime
 
 bp = Blueprint('command', __name__, url_prefix='/api/command')
@@ -25,6 +26,18 @@ system_service = SystemControlService()
 def execute_local_command(user_text):
     """Execute supported local actions without requiring an LLM."""
     normalized = user_text.lower().strip()
+
+    match = re.fullmatch(r"open\s+(?:the\s+)?(.+?)\s+and\s+(?:write|type)\s+(.+)", normalized)
+    if match:
+        app, text = match.groups()
+        opened = system_service.open_application(app)
+        if not opened.get('success'):
+            return None
+        time.sleep(1)
+        typed = system_service.type_text(text)
+        if typed.get('success'):
+            return {'success': True, 'message': f'Opened {app} and typed your text'}
+        return None
 
     match = re.fullmatch(r"(open|close)\s+(?:the\s+)?(.+)", normalized)
     if match:
