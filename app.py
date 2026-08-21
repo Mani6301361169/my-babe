@@ -5,7 +5,10 @@ Modular Flask application with blueprints for a voice-activated AI assistant
 
 from flask import Flask, render_template, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
 import logging
+
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
